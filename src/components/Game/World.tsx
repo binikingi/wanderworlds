@@ -138,6 +138,19 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
           )}
         </div>
       </div>
+      
+      {/* Connection status indicator */}
+      <div className={cn(
+        "absolute bottom-20 right-4 px-3 py-1 rounded-full text-xs font-medium",
+        "flex items-center space-x-1.5",
+        gameState.isConnected ? "bg-green-500/20 text-green-700" : "bg-red-500/20 text-red-700"
+      )}>
+        <div className={cn(
+          "w-2 h-2 rounded-full animate-pulse",
+          gameState.isConnected ? "bg-green-500" : "bg-red-500"
+        )} />
+        <span>{gameState.isConnected ? "Connected" : "Disconnected"}</span>
+      </div>
     </div>
   );
 };

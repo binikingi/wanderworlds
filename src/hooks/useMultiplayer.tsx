@@ -1,9 +1,12 @@
+
 import { useEffect, useCallback, useState, useRef } from 'react';
 import { PlayerState } from '../types/game';
 import { toast } from '@/components/ui/use-toast';
 import { generateUUID } from '@/lib/uuid-generator';
 
-// Mock WebSocket for demo purposes - in a real app, this would use actual WebSockets
+// WebSocket server URL - use environment variable or default
+const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'ws://localhost:8080';
+
 export function useMultiplayer(
   onPlayerJoin: (player: PlayerState) => void,
   onPlayerLeave: (playerId: string) => void,
@@ -12,115 +15,178 @@ export function useMultiplayer(
 ) {
   const [isConnected, setIsConnected] = useState(false);
   const [playerId, setPlayerId] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const playerRef = useRef<PlayerState | null>(null);
-  const mockPlayersRef = useRef<Record<string, NodeJS.Timeout>>({});
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Connect to WebSocket server
   const connect = useCallback(() => {
-    // Simulate connection delay
     const id = generateUUID();
     setPlayerId(id);
     
-    setTimeout(() => {
-      setIsConnected(true);
-      onConnected(true);
-      toast({
-        title: "Connected to server",
-        description: "You are now connected to the game world",
-      });
+    try {
+      const ws = new WebSocket(WS_SERVER_URL);
+      wsRef.current = ws;
       
-      // Add some mock players
-      createMockPlayers();
-    }, 1500);
+      // Handle WebSocket connection open
+      ws.onopen = () => {
+        console.log('Connected to WebSocket server');
+        setIsConnected(true);
+        onConnected(true);
+        
+        // Join the game
+        ws.send(JSON.stringify({
+          type: 'join',
+          playerId: id
+        }));
+        
+        toast({
+          title: "Connected to server",
+          description: "You are now connected to the game world",
+        });
+      };
+      
+      // Handle WebSocket messages
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          switch (data.type) {
+            case 'joined':
+              // Received initial game state
+              if (data.players) {
+                // Load existing players
+                Object.values(data.players).forEach((player: any) => {
+                  if (player.id !== id) {
+                    onPlayerJoin(player as PlayerState);
+                  }
+                });
+              }
+              break;
+              
+            case 'playerJoined':
+              // New player joined
+              if (data.player && data.player.id !== id) {
+                onPlayerJoin(data.player as PlayerState);
+                toast({
+                  title: "Player joined",
+                  description: `${data.player.name} has joined the world`,
+                });
+              }
+              break;
+              
+            case 'playerUpdated':
+              // Player updated their state
+              if (data.player && data.player.id !== id) {
+                onPlayerUpdate(data.player as PlayerState);
+              }
+              break;
+              
+            case 'playerLeft':
+              // Player left the game
+              if (data.playerId && data.playerId !== id) {
+                onPlayerLeave(data.playerId);
+                toast({
+                  title: "Player left",
+                  description: "A player has left the world",
+                  variant: "destructive",
+                });
+              }
+              break;
+              
+            default:
+              console.log('Unknown message type:', data.type);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+      
+      // Handle WebSocket errors
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast({
+          title: "Connection error",
+          description: "Failed to connect to game server",
+          variant: "destructive",
+        });
+      };
+      
+      // Handle WebSocket disconnection
+      ws.onclose = () => {
+        setIsConnected(false);
+        onConnected(false);
+        
+        // Attempt to reconnect after a delay
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+        }
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (playerId) {
+            toast({
+              title: "Reconnecting",
+              description: "Attempting to reconnect to the game server",
+            });
+            connect();
+          }
+        }, 5000);
+      };
+    } catch (error) {
+      console.error('Failed to create WebSocket connection:', error);
+      toast({
+        title: "Connection failed",
+        description: "Could not establish connection to the game server",
+        variant: "destructive",
+      });
+    }
     
     return id;
-  }, [onConnected]);
+  }, [onConnected, onPlayerJoin, onPlayerLeave, onPlayerUpdate]);
 
+  // Disconnect from WebSocket server
   const disconnect = useCallback(() => {
-    if (playerId) {
-      // Cleanup mock players
-      Object.values(mockPlayersRef.current).forEach(clearInterval);
-      mockPlayersRef.current = {};
-      
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
       setIsConnected(false);
       onConnected(false);
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
       toast({
         title: "Disconnected from server",
         description: "You have been disconnected from the game world",
         variant: "destructive",
       });
     }
-  }, [playerId, onConnected]);
+  }, [onConnected]);
 
+  // Update player state on the server
   const updatePlayer = useCallback((player: PlayerState) => {
     playerRef.current = player;
     
-    // In a real implementation, this would send the update to the server
-    console.log("Player updated:", player);
-  }, []);
-
-  const createMockPlayers = useCallback(() => {
-    // Create 3-5 mock players with random movement patterns
-    const playerCount = Math.floor(Math.random() * 3) + 3;
-    
-    for (let i = 0; i < playerCount; i++) {
-      const mockPlayerId = `mock-${generateUUID()}`;
-      const mockPlayer: PlayerState = {
-        id: mockPlayerId,
-        position: {
-          x: Math.floor(Math.random() * 1800) + 100,
-          y: Math.floor(Math.random() * 1800) + 100,
-        },
-        direction: 'idle',
-        isMoving: false,
-        avatar: String(Math.floor(Math.random() * 5) + 1),
-        name: `Player ${i + 1}`,
-        color: ['#5585FF', '#FF7D54', '#FFB443', '#42D6A4', '#FF5A5A'][Math.floor(Math.random() * 5)],
-      };
-      
-      // Notify that a player has joined
-      onPlayerJoin(mockPlayer);
-      
-      // Set up movement pattern
-      const intervalId = setInterval(() => {
-        // Random movement
-        const directions = ['up', 'down', 'left', 'right', 'idle'];
-        const randomDirection = directions[Math.floor(Math.random() * 5)] as PlayerState['direction'];
-        const isMoving = randomDirection !== 'idle';
-        
-        let newX = mockPlayer.position.x;
-        let newY = mockPlayer.position.y;
-        
-        if (isMoving) {
-          const moveDistance = 3;
-          
-          if (randomDirection === 'up') {
-            newY = Math.max(0, mockPlayer.position.y - moveDistance);
-          } else if (randomDirection === 'down') {
-            newY = Math.min(2000 - 50, mockPlayer.position.y + moveDistance);
-          } else if (randomDirection === 'left') {
-            newX = Math.max(0, mockPlayer.position.x - moveDistance);
-          } else if (randomDirection === 'right') {
-            newX = Math.min(2000 - 50, mockPlayer.position.x + moveDistance);
-          }
-        }
-        
-        mockPlayer.position.x = newX;
-        mockPlayer.position.y = newY;
-        mockPlayer.direction = randomDirection;
-        mockPlayer.isMoving = isMoving;
-        
-        // Notify player update
-        onPlayerUpdate(mockPlayer);
-      }, 100);
-      
-      mockPlayersRef.current[mockPlayerId] = intervalId;
+    if (wsRef.current && isConnected) {
+      wsRef.current.send(JSON.stringify({
+        type: 'updatePlayer',
+        player: player
+      }));
     }
-  }, [onPlayerJoin, onPlayerUpdate]);
+  }, [isConnected]);
 
+  // Clean up WebSocket connection on unmount
   useEffect(() => {
     return () => {
-      // Clean up any mock players when unmounting
-      Object.values(mockPlayersRef.current).forEach(clearInterval);
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
   }, []);
 
