@@ -1,8 +1,7 @@
-
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { PlayerState } from '../types/game';
 import { toast } from '@/components/ui/use-toast';
+import { generateUUID } from '@/lib/uuid-generator';
 
 // Mock WebSocket for demo purposes - in a real app, this would use actual WebSockets
 export function useMultiplayer(
@@ -18,7 +17,7 @@ export function useMultiplayer(
 
   const connect = useCallback(() => {
     // Simulate connection delay
-    const id = uuidv4();
+    const id = generateUUID();
     setPlayerId(id);
     
     setTimeout(() => {
@@ -64,7 +63,7 @@ export function useMultiplayer(
     const playerCount = Math.floor(Math.random() * 3) + 3;
     
     for (let i = 0; i < playerCount; i++) {
-      const mockPlayerId = `mock-${uuidv4()}`;
+      const mockPlayerId = `mock-${generateUUID()}`;
       const mockPlayer: PlayerState = {
         id: mockPlayerId,
         position: {
@@ -133,5 +132,3 @@ export function useMultiplayer(
     playerId,
   };
 }
-
-<lov-add-dependency>uuid@^9.0.1</lov-add-dependency>
