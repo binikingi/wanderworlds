@@ -12,31 +12,49 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
   const [worldPosition, setWorldPosition] = useState({ x: 0, y: 0 });
   const worldRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastUpdateTimeRef = useRef<number>(0);
 
-  // Center the world on the current player
+  // Center the world on the current player - use requestAnimationFrame for smoother updates
   useEffect(() => {
-    if (!gameState.currentPlayerId || !containerRef.current) return;
+    let animationFrameId: number;
     
-    const currentPlayer = gameState.players[gameState.currentPlayerId];
-    if (!currentPlayer) return;
+    const updateWorldPosition = (timestamp: number) => {
+      // Throttle updates to avoid too many re-renders (every 16ms ≈ 60fps)
+      if (timestamp - lastUpdateTimeRef.current >= 16) {
+        lastUpdateTimeRef.current = timestamp;
+        
+        if (!gameState.currentPlayerId || !containerRef.current) return;
+        
+        const currentPlayer = gameState.players[gameState.currentPlayerId];
+        if (!currentPlayer) return;
+        
+        const containerWidth = containerRef.current.clientWidth;
+        const containerHeight = containerRef.current.clientHeight;
+        
+        // Center the player in the viewport
+        const newWorldX = currentPlayer.position.x - containerWidth / 2 + 25;
+        const newWorldY = currentPlayer.position.y - containerHeight / 2 + 25;
+        
+        // Clamp world position to prevent showing beyond boundaries
+        const clampedX = Math.max(0, Math.min(newWorldX, gameState.worldSize.width - containerWidth));
+        const clampedY = Math.max(0, Math.min(newWorldY, gameState.worldSize.height - containerHeight));
+        
+        setWorldPosition({ x: clampedX, y: clampedY });
+      }
+      
+      animationFrameId = requestAnimationFrame(updateWorldPosition);
+    };
     
-    const containerWidth = containerRef.current.clientWidth;
-    const containerHeight = containerRef.current.clientHeight;
+    // Start the animation frame loop
+    animationFrameId = requestAnimationFrame(updateWorldPosition);
     
-    // Center the player in the viewport
-    const newWorldX = currentPlayer.position.x - containerWidth / 2 + 25;
-    const newWorldY = currentPlayer.position.y - containerHeight / 2 + 25;
-    
-    // Clamp world position to prevent showing beyond boundaries
-    const clampedX = Math.max(0, Math.min(newWorldX, gameState.worldSize.width - containerWidth));
-    const clampedY = Math.max(0, Math.min(newWorldY, gameState.worldSize.height - containerHeight));
-    
-    setWorldPosition({ x: clampedX, y: clampedY });
-  }, [
-    gameState.currentPlayerId, 
-    gameState.players, 
-    gameState.worldSize
-  ]);
+    // Clean up
+    return () => {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [gameState.currentPlayerId, gameState.players, gameState.worldSize]);
 
   return (
     <div 
@@ -46,7 +64,7 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
       {/* World container */}
       <div 
         ref={worldRef}
-        className="absolute top-0 left-0 transition-transform duration-300 ease-out"
+        className="absolute top-0 left-0 will-change-transform"
         style={{
           width: `${gameState.worldSize.width}px`,
           height: `${gameState.worldSize.height}px`,
