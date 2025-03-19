@@ -1,0 +1,39 @@
+
+export type Position = {
+  x: number;
+  y: number;
+};
+
+export type Direction = 'up' | 'down' | 'left' | 'right' | 'idle';
+
+export type PlayerState = {
+  id: string;
+  position: Position;
+  direction: Direction;
+  isMoving: boolean;
+  avatar: string;
+  name: string;
+  color: string;
+};
+
+export type GameState = {
+  players: Record<string, PlayerState>;
+  currentPlayerId: string | null;
+  worldSize: {
+    width: number;
+    height: number;
+  };
+  isConnected: boolean;
+};
+
+export type AvatarOption = {
+  id: string;
+  name: string;
+  image: string;
+};
+
+export type ColorOption = {
+  id: string;
+  name: string;
+  value: string;
+};
