@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { generateUUID } from '@/lib/uuid-generator';
 
 // WebSocket server URL - use environment variable or default
-const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'ws://localhost:8080';
+const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'ws://401b-176-230-216-107.ngrok-free.app';
 
 export function useMultiplayer(
   onPlayerJoin: (player: PlayerState) => void,
