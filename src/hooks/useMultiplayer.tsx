@@ -5,7 +5,7 @@ import { toast } from '@/components/ui/use-toast';
 import { generateUUID } from '@/lib/uuid-generator';
 
 // WebSocket server URL - use environment variable or default
-const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'ws://game-wobsocket.fly.dev/';
+const WS_SERVER_URL = import.meta.env.VITE_WS_SERVER_URL || 'wss://game-wobsocket.fly.dev/';
 
 export function useMultiplayer(
   onPlayerJoin: (player: PlayerState) => void,
