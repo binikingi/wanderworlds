@@ -71,11 +71,8 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
           transform: `translate(-${worldPosition.x}px, -${worldPosition.y}px)`,
         }}
       >
-        {/* Background pattern */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-gray-50" />
-          <div className="absolute inset-0 bg-grid-pattern opacity-10" />
-        </div>
+        {/* Solid background color */}
+        <div className="absolute inset-0 bg-gray-100 pointer-events-none" />
         
         {/* Grid lines for visual reference */}
         <div className="absolute inset-0 grid grid-cols-10 grid-rows-10 pointer-events-none">
@@ -94,57 +91,6 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
             />
           ))}
         </div>
-        
-        {/* World decorations - circles */}
-        {Array.from({ length: 15 }).map((_, i) => (
-          <div 
-            key={`circle-${i}`}
-            className={cn(
-              "absolute rounded-full",
-              "pointer-events-none",
-              "bg-gradient-to-b",
-              i % 3 === 0 ? "from-game-primary/10 to-game-primary/5" : 
-              i % 3 === 1 ? "from-game-secondary/10 to-game-secondary/5" : 
-              "from-game-accent/10 to-game-accent/5"
-            )}
-            style={{
-              width: `${Math.random() * 300 + 50}px`,
-              height: `${Math.random() * 300 + 50}px`,
-              left: `${Math.random() * gameState.worldSize.width}px`,
-              top: `${Math.random() * gameState.worldSize.height}px`,
-              opacity: 0.7,
-            }}
-          />
-        ))}
-        
-        {/* World decorations - shapes */}
-        {Array.from({ length: 8 }).map((_, i) => {
-          const size = Math.random() * 200 + 100;
-          return (
-            <div 
-              key={`shape-${i}`}
-              className="absolute pointer-events-none"
-              style={{
-                width: `${size}px`,
-                height: `${size}px`,
-                left: `${Math.random() * gameState.worldSize.width}px`,
-                top: `${Math.random() * gameState.worldSize.height}px`,
-                opacity: 0.4,
-                transform: `rotate(${Math.random() * 360}deg)`,
-              }}
-            >
-              {i % 4 === 0 ? (
-                <div className="w-full h-full rounded-full border-4 border-game-primary/20" />
-              ) : i % 4 === 1 ? (
-                <div className="w-full h-full rounded-3xl border-4 border-game-secondary/20" />
-              ) : i % 4 === 2 ? (
-                <div className="w-full h-1/2 rounded-t-full border-4 border-game-accent/20" />
-              ) : (
-                <div className="w-1/2 h-full rounded-l-full border-4 border-game-primary/20" />
-              )}
-            </div>
-          );
-        })}
         
         {/* Render all players */}
         {Object.values(gameState.players).map((player) => (
