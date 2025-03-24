@@ -1,14 +1,19 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Player from './Player';
+import InteractiveObject from './InteractiveObject';
+import ChatSystem from './ChatSystem';
+import ScoreBoard from './ScoreBoard';
 import { GameState } from '@/types/game';
 import { cn } from '@/lib/utils';
 
 type WorldProps = {
   gameState: GameState;
+  onCollectObject: (objectId: string) => void;
+  onSendChatMessage: (message: string) => void;
 };
 
-const World: React.FC<WorldProps> = ({ gameState }) => {
+const World: React.FC<WorldProps> = ({ gameState, onCollectObject, onSendChatMessage }) => {
   const [worldPosition, setWorldPosition] = useState({ x: 0, y: 0 });
   const worldRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -92,6 +97,15 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
           ))}
         </div>
         
+        {/* Render all interactive objects */}
+        {Object.values(gameState.objects).map((object) => (
+          <InteractiveObject 
+            key={object.id}
+            object={object}
+            onCollect={onCollectObject}
+          />
+        ))}
+        
         {/* Render all players */}
         {Object.values(gameState.players).map((player) => (
           <Player 
@@ -102,6 +116,19 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
           />
         ))}
       </div>
+      
+      {/* Chat system */}
+      <ChatSystem 
+        messages={gameState.messages}
+        currentPlayerId={gameState.currentPlayerId}
+        onSendMessage={onSendChatMessage}
+      />
+      
+      {/* Score board */}
+      <ScoreBoard 
+        players={gameState.players}
+        currentPlayerId={gameState.currentPlayerId}
+      />
       
       {/* Minimap (position indicator) */}
       <div className="absolute top-4 right-4 w-40 h-40 bg-white/60 backdrop-blur-md rounded-lg border border-white/40 shadow-lg p-2">
@@ -124,6 +151,20 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
             />
           ))}
           
+          {/* Minimap object indicators */}
+          {Object.values(gameState.objects)
+            .filter(obj => !obj.collected)
+            .map((object) => (
+              <div 
+                key={`map-obj-${object.id}`}
+                className="absolute w-1 h-1 rounded-full bg-yellow-400"
+                style={{
+                  left: `${(object.position.x / gameState.worldSize.width) * 100}%`,
+                  top: `${(object.position.y / gameState.worldSize.height) * 100}%`,
+                }}
+              />
+            ))}
+          
           {/* Viewport indicator */}
           {gameState.currentPlayerId && containerRef.current && (
             <div 
@@ -141,7 +182,7 @@ const World: React.FC<WorldProps> = ({ gameState }) => {
       
       {/* Connection status indicator */}
       <div className={cn(
-        "absolute bottom-20 right-4 px-3 py-1 rounded-full text-xs font-medium",
+        "absolute bottom-20 left-20 px-3 py-1 rounded-full text-xs font-medium",
         "flex items-center space-x-1.5",
         gameState.isConnected ? "bg-green-500/20 text-green-700" : "bg-red-500/20 text-red-700"
       )}>

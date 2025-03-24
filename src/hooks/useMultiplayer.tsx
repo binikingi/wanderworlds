@@ -1,6 +1,6 @@
 
 import { useEffect, useCallback, useState, useRef } from 'react';
-import { PlayerState } from '../types/game';
+import { PlayerState, InteractiveObject, ChatMessage } from '../types/game';
 import { toast } from '@/components/ui/use-toast';
 import { generateUUID } from '@/lib/uuid-generator';
 
@@ -11,6 +11,10 @@ export function useMultiplayer(
   onPlayerJoin: (player: PlayerState) => void,
   onPlayerLeave: (playerId: string) => void,
   onPlayerUpdate: (player: PlayerState) => void,
+  onObjectsReceived: (objects: Record<string, InteractiveObject>) => void,
+  onObjectCollected: (objectId: string, playerId: string, playerScore: number) => void,
+  onObjectRespawned: (object: InteractiveObject) => void,
+  onChatMessageReceived: (message: ChatMessage) => void,
   onConnected: (connected: boolean) => void
 ) {
   const [isConnected, setIsConnected] = useState(false);
@@ -62,6 +66,18 @@ export function useMultiplayer(
                   }
                 });
               }
+              
+              // Load interactive objects
+              if (data.objects) {
+                onObjectsReceived(data.objects);
+              }
+              
+              // Load chat messages
+              if (data.messages) {
+                data.messages.forEach((message: ChatMessage) => {
+                  onChatMessageReceived(message);
+                });
+              }
               break;
               
             case 'playerJoined':
@@ -92,6 +108,29 @@ export function useMultiplayer(
                   variant: "destructive",
                 });
               }
+              break;
+              
+            case 'objectCollected':
+              // Object was collected
+              onObjectCollected(data.objectId, data.playerId, data.playerScore);
+              
+              // Show toast if current player collected it
+              if (data.playerId === id) {
+                toast({
+                  title: "Item collected!",
+                  description: `You collected an item! Score: ${data.playerScore}`,
+                });
+              }
+              break;
+              
+            case 'objectRespawned':
+              // Object was respawned
+              onObjectRespawned(data.object);
+              break;
+              
+            case 'newChatMessage':
+              // Received a new chat message
+              onChatMessageReceived(data.message);
               break;
               
             default:
@@ -142,7 +181,7 @@ export function useMultiplayer(
     }
     
     return id;
-  }, [onConnected, onPlayerJoin, onPlayerLeave, onPlayerUpdate]);
+  }, [onConnected, onPlayerJoin, onPlayerLeave, onPlayerUpdate, onObjectsReceived, onObjectCollected, onObjectRespawned, onChatMessageReceived]);
 
   // Disconnect from WebSocket server
   const disconnect = useCallback(() => {
@@ -177,6 +216,26 @@ export function useMultiplayer(
     }
   }, [isConnected]);
 
+  // Collect an object
+  const collectObject = useCallback((objectId: string) => {
+    if (wsRef.current && isConnected) {
+      wsRef.current.send(JSON.stringify({
+        type: 'collectObject',
+        objectId: objectId
+      }));
+    }
+  }, [isConnected]);
+
+  // Send a chat message
+  const sendChatMessage = useCallback((message: string) => {
+    if (wsRef.current && isConnected && message.trim()) {
+      wsRef.current.send(JSON.stringify({
+        type: 'chatMessage',
+        message: message
+      }));
+    }
+  }, [isConnected]);
+
   // Clean up WebSocket connection on unmount
   useEffect(() => {
     return () => {
@@ -194,6 +253,8 @@ export function useMultiplayer(
     connect,
     disconnect,
     updatePlayer,
+    collectObject,
+    sendChatMessage,
     isConnected,
     playerId,
   };

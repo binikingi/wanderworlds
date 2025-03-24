@@ -14,10 +14,30 @@ export type PlayerState = {
   avatar: string;
   name: string;
   color: string;
+  score: number; // Track player's score
+};
+
+export type InteractiveObject = {
+  id: string;
+  type: 'coin' | 'gem' | 'star';
+  position: Position;
+  value: number;
+  collected: boolean;
+  collectedBy: string | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  playerId: string;
+  playerName: string;
+  message: string;
+  timestamp: number;
 };
 
 export type GameState = {
   players: Record<string, PlayerState>;
+  objects: Record<string, InteractiveObject>;
+  messages: ChatMessage[];
   currentPlayerId: string | null;
   worldSize: {
     width: number;

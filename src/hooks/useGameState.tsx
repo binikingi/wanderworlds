@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { GameState, PlayerState, Position, Direction } from '../types/game';
+import { GameState, PlayerState, Position, Direction, InteractiveObject, ChatMessage } from '../types/game';
 
 export const WORLD_SIZE = {
   width: 2000,
@@ -11,6 +11,8 @@ export const MOVE_SPEED = 5;
 
 const DEFAULT_GAME_STATE: GameState = {
   players: {},
+  objects: {},
+  messages: [],
   currentPlayerId: null,
   worldSize: WORLD_SIZE,
   isConnected: false,
@@ -86,6 +88,38 @@ export function useGameState() {
           return prevState;
         }
         
+        // Check if player is collecting any objects
+        const playerRect = {
+          x: newX,
+          y: newY,
+          width: 50,
+          height: 50
+        };
+        
+        let objectCollected = null;
+        
+        // Check collision with objects
+        Object.values(prevState.objects).forEach(object => {
+          if (!object.collected) {
+            const objectRect = {
+              x: object.position.x,
+              y: object.position.y,
+              width: 30,
+              height: 30
+            };
+            
+            // Simple collision detection
+            if (
+              playerRect.x < objectRect.x + objectRect.width &&
+              playerRect.x + playerRect.width > objectRect.x &&
+              playerRect.y < objectRect.y + objectRect.height &&
+              playerRect.y + playerRect.height > objectRect.y
+            ) {
+              objectCollected = object.id;
+            }
+          }
+        });
+        
         const updatedPlayers = {
           ...prevState.players,
           [prevState.currentPlayerId]: {
@@ -98,7 +132,7 @@ export function useGameState() {
         
         return {
           ...prevState,
-          players: updatedPlayers,
+          players: updatedPlayers
         };
       });
     }, 16); // approximately 60fps
@@ -121,6 +155,7 @@ export function useGameState() {
         avatar: '1',
         name: `Player ${playerId.slice(0, 4)}`,
         color: '#5585FF',
+        score: 0,
       };
       
       return {
@@ -202,6 +237,75 @@ export function useGameState() {
     }));
   }, []);
 
+  const addObjects = useCallback((newObjects: Record<string, InteractiveObject>) => {
+    setGameState((prevState) => ({
+      ...prevState,
+      objects: { ...prevState.objects, ...newObjects }
+    }));
+  }, []);
+
+  const updateObject = useCallback((objectId: string, updates: Partial<InteractiveObject>) => {
+    setGameState((prevState) => {
+      if (!prevState.objects[objectId]) return prevState;
+      
+      return {
+        ...prevState,
+        objects: {
+          ...prevState.objects,
+          [objectId]: {
+            ...prevState.objects[objectId],
+            ...updates
+          }
+        }
+      };
+    });
+  }, []);
+
+  const addChatMessage = useCallback((message: ChatMessage) => {
+    setGameState((prevState) => ({
+      ...prevState,
+      messages: [...prevState.messages, message]
+    }));
+  }, []);
+
+  const collectObject = useCallback((objectId: string, playerId: string) => {
+    setGameState((prevState) => {
+      // If object doesn't exist or is already collected
+      if (!prevState.objects[objectId] || prevState.objects[objectId].collected) {
+        return prevState;
+      }
+      
+      // Mark object as collected
+      const updatedObjects = {
+        ...prevState.objects,
+        [objectId]: {
+          ...prevState.objects[objectId],
+          collected: true,
+          collectedBy: playerId
+        }
+      };
+      
+      // Update player score
+      const playerScore = prevState.players[playerId] ? 
+        prevState.players[playerId].score + prevState.objects[objectId].value : 
+        prevState.objects[objectId].value;
+      
+      const updatedPlayers = {
+        ...prevState.players,
+        [playerId]: {
+          ...prevState.players[playerId],
+          score: playerScore
+        }
+      };
+      
+      return {
+        ...prevState,
+        objects: updatedObjects,
+        players: updatedPlayers
+      };
+    });
+  }, []);
+
   const getCurrentPlayer = useCallback(() => {
     if (!gameState.currentPlayerId) return null;
     return gameState.players[gameState.currentPlayerId];
@@ -216,6 +320,10 @@ export function useGameState() {
     addOtherPlayer,
     removePlayer,
     setConnected,
+    addObjects,
+    updateObject,
+    collectObject,
+    addChatMessage,
     getCurrentPlayer,
   };
 }

@@ -72,14 +72,17 @@ const Player: React.FC<PlayerProps> = ({ player, isCurrentPlayer, worldPosition 
         />
       </div>
       
-      {/* Player name */}
+      {/* Player name and score */}
       <div className={cn(
         "absolute -bottom-6 left-1/2 -translate-x-1/2",
         "text-xs font-semibold text-center",
         "bg-black/60 text-white px-2 py-0.5 rounded-md whitespace-nowrap",
         isCurrentPlayer ? "text-white" : "text-gray-100"
       )}>
-        {player.name}
+        <span>{player.name}</span>
+        <span className="ml-1 bg-yellow-500 text-black px-1 rounded-sm">
+          {player.score}
+        </span>
       </div>
       
       {/* Current player indicator (only for current player) */}
