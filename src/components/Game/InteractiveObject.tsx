@@ -2,7 +2,7 @@
 import React from 'react';
 import { InteractiveObject as ObjectType } from '@/types/game';
 import { cn } from '@/lib/utils';
-import { CoinIcon, GemIcon, StarIcon } from 'lucide-react';
+import { CoinsIcon, GemIcon, StarIcon } from 'lucide-react';
 
 type InteractiveObjectProps = {
   object: ObjectType;
@@ -19,13 +19,13 @@ const InteractiveObject: React.FC<InteractiveObjectProps> = ({ object, onCollect
   const getIcon = () => {
     switch (object.type) {
       case 'coin':
-        return <CoinIcon className="h-6 w-6 text-yellow-400" />;
+        return <CoinsIcon className="h-6 w-6 text-yellow-400" />;
       case 'gem':
         return <GemIcon className="h-6 w-6 text-blue-500" />;
       case 'star':
         return <StarIcon className="h-6 w-6 text-purple-500" />;
       default:
-        return <CoinIcon className="h-6 w-6 text-yellow-400" />;
+        return <CoinsIcon className="h-6 w-6 text-yellow-400" />;
     }
   };
   
